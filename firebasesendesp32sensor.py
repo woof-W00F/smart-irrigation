@@ -4,7 +4,8 @@ import firebase_admin
 from firebase_admin import credentials,db
 import time
 
-
+SERVICE_ACCOUNT_KET = "serviceAccountKey"
+DATABASE_URL = "your-firebase-data-url"
 
 def parse_log_to_json(log_text):
     records = []
