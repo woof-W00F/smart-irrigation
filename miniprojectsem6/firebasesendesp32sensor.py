@@ -1,0 +1,123 @@
+import json
+import re
+import firebase_admin
+from firebase_admin import credentials,db
+import time
+
+
+#SERVICE_ACCOUNT_KEY = "serviceAccountKey"
+#DATABASE_URL = "https://espproject-970e0-default-rtdb.asia-southeast1.firebasedatabase.app/"
+
+SERVICE_ACCOUNT_KEY = "firebase-credentials.json"
+DATABASE_URL = "https://meromesh-14ae5-default-rtdb.asia-southeast1.firebasedatabase.app/"
+JSON_FILE = "output.json"
+DB_PATH = "/smartirrigation/FARMID1"
+
+def parse_log_to_json(log_text):
+    records = []
+    current_record = {}
+
+    for line in log_text:
+        
+        # Extract timestamp and content
+        match = re.match(r"\[(.*?)\]\s*(.*)", line)
+        if not match:
+            continue
+
+        timestamp, content = match.groups()
+
+        # New record starts when Node_ID appears
+        if content.startswith("Node_ID"):
+            if current_record:
+                records.append(current_record)
+                current_record = {}
+
+            current_record["timestamp"] = timestamp
+
+        # Split key and value
+        if ":" in content:
+            key, value = content.split(":", 1)
+            key = key.strip().lower()
+            value = value.strip()
+
+            # Convert specific fields
+            if key == "Sensor_mositure":
+                value = int(value)
+            elif key == "Pump":
+                value = str(value).lower()
+            elif key == "Valve_ID":
+                value = int(value)
+            elif key == "Valve_switch_1":
+                value = str(value).lower()
+            elif key == "Valve_switch_2":
+                value = str(value).lower()
+                
+
+            current_record[key] = value
+
+    # Append last record
+    if current_record:
+        records.append(current_record)
+
+    return records
+
+def send_json_to_firebase():
+    # Initialize Firebase
+    cred = credentials.Certificate(SERVICE_ACCOUNT_KEY)
+    firebase_admin.initialize_app(cred, {
+        "databaseURL": DATABASE_URL
+    })
+    while True:
+        with open("serial_log.txt", "r") as f:
+            log_data = f.readlines()
+            last_n_lines = log_data[-5:]   #Sets the line to pick from bottom
+            json_data = parse_log_to_json(last_n_lines)    
+        with open("output.json", "w") as f:
+            json.dump(json_data, f, indent=4)
+
+        # Load JSON data
+        with open(JSON_FILE, "r") as f:
+            data = json.load(f)
+        
+        #pumpval = data.pop("pump")
+        #timestamp = data.pop("timestamp")
+        
+        # Reference to database path
+        ref = db.reference(DB_PATH)
+
+        # Push data (auto-generated keys)
+        '''
+        for entry in data:
+            if (entry['node_id'] == "1"):
+                ref.child("Node1").set(entry)
+            elif (entry['node_id'] == "2"):
+                ref.child("Node2").set(entry)
+            elif (entry['node_id'] == "3"):
+                ref.child("Node3").set(entry)
+        ref.child('pump').set(pumpval)
+        ref.child('timestamp').set(timestamp)
+        '''
+        for entry in data:
+            node_id = entry.get("node_id")
+
+            if node_id == "1":
+                ref.child("node1").set(entry)
+            elif node_id == "2":
+                ref.child("node2").set(entry)
+            elif node_id == "3":
+                ref.child("node3").set(entry)
+
+        # send individual fields directly
+            if "pump" in entry:
+                ref.child("pump").set(entry["pump"])
+
+            if "timestamp" in entry:
+                ref.child("timestamp").set(entry["timestamp"])
+        print("✅ Data successfully sent to Firebase Realtime Database")
+        time.sleep(0.5)        
+
+if __name__ == "__main__":
+    send_json_to_firebase()
+
+
+
