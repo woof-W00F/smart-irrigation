@@ -5,13 +5,6 @@ from firebase_admin import credentials,db
 import time
 
 
-#SERVICE_ACCOUNT_KEY = "serviceAccountKey"
-#DATABASE_URL = "https://espproject-970e0-default-rtdb.asia-southeast1.firebasedatabase.app/"
-
-#SERVICE_ACCOUNT_KEY = "firebase-credentials.json"
-#DATABASE_URL = "https://meromesh-14ae5-default-rtdb.asia-southeast1.firebasedatabase.app/"
-#JSON_FILE = "output.json"
-#DB_PATH = "/smartirrigation/FARMID1"
 
 def parse_log_to_json(log_text):
     records = []
